@@ -1,4 +1,5 @@
-const MODEL_ID = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
+const MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+const MODEL_RESPONSE_WAIT_MS = 8000;
 const composer = document.querySelector('#composer');
 const input = document.querySelector('#promptInput');
 const chat = document.querySelector('#chatScroll');
@@ -32,16 +33,34 @@ let recognition = null;
 let isListening = false;
 let voiceEnabled = true;
 let conversationMode = 'chat';
+let instantModeActive = false;
 const history = [{
   role: 'system',
   content: 'You are NOVA, a warm, sharp, emotionally expressive AI companion. Answer in 2 to 4 concise sentences. Be specific and practical. Use a little personality, but never claim to be human. If the user asks for a plan, give clear steps. If they seem stuck, be encouraging.'
 }];
 
-const fallbackResponses = [
-  'I can still stay with that thought. Tell me the outcome you want, and I’ll help you find the smallest next step.',
-  'That has an interesting signal in it. Separate what you know, what you assume, and what you want to test next — then we can build from there.',
-  'I’m in. Give me one concrete detail, even if it feels unfinished, and I’ll help turn it into something with shape.'
-];
+function createInstantReply(prompt) {
+  const value = prompt.toLowerCase();
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(value)) {
+    return 'Hello — I’m here and ready. Tell me what you are working on, deciding, or trying to understand, and we’ll make it clearer together.';
+  }
+  if (/\b(plan|focus|prioriti[sz]e|steps?|today|task)\b/.test(value)) {
+    return 'Let’s make it concrete: define the result you want, choose the smallest action that moves it forward, then give that action one focused 25-minute block. Tell me the outcome and deadline, and I’ll shape the steps around them.';
+  }
+  if (/\b(brainstorm|ideas?|creative|directions?|invent)\b/.test(value)) {
+    return 'Let’s explore five angles: practical, bold, social, automated, and deliberately low-cost. Give me the audience and desired outcome, and I’ll turn those angles into specific ideas and recommend the strongest one.';
+  }
+  if (/\b(explain|understand|teach|meaning|how does)\b/.test(value)) {
+    return 'Tell me the exact topic and how familiar you are with it. I’ll explain it in plain language, connect it to one familiar example, and finish with a quick way to check your understanding.';
+  }
+  if (/\b(write|writing|rewrite|edit|email|message|resume)\b/.test(value)) {
+    return 'Paste the text and tell me who it is for. I’ll improve its clarity, tone, and structure while preserving what you actually mean.';
+  }
+  if (/\b(decide|decision|choose|choice|trade-?offs?|option)\b/.test(value)) {
+    return 'Compare the options on four things: fit with your goal, total cost, downside risk, and how reversible the choice is. Send me the options and your top priority, and I’ll build a clear recommendation.';
+  }
+  return 'Let’s work it through. Tell me the outcome you want, what is getting in the way, and one constraint I should respect; I’ll help you identify the most useful next move.';
+}
 
 function setPresence(state, expression = 'CALM / CURIOUS') {
   avatarStage.classList.remove('is-speaking', 'is-thinking', 'is-listening', 'mood-bright', 'mood-focused', 'mood-warm');
@@ -91,41 +110,73 @@ function setModelStatus(text, state = '') {
   document.querySelector('#modelStrip').className = `model-strip ${state}`;
 }
 
-async function loadModel() {
-  if (engine) return engine;
+function startModelLoad() {
+  if (engine) return Promise.resolve(engine);
   if (!navigator.gpu) {
-    setModelStatus('WebGPU unavailable — using the graceful offline companion', 'fallback');
-    modelLabel.textContent = 'FREE · FALLBACK';
-    return null;
+    instantModeActive = true;
+    setModelStatus('WebGPU is unavailable · instant replies are active', 'instant');
+    modelLabel.textContent = 'INSTANT · LOCAL';
+    systemStatus.textContent = 'SYSTEM ONLINE';
+    return Promise.resolve(null);
   }
   if (enginePromise) return enginePromise;
   modelButton.disabled = true;
-  modelButton.textContent = 'LOADING...';
-  setModelStatus('Downloading the free local model (first run only)', 'loading');
+  modelButton.textContent = 'LOADING AI...';
+  setModelStatus('Downloading the fast local model (first run only)', 'loading');
   systemStatus.textContent = 'LOADING LOCAL MODEL';
-  enginePromise = import('https://esm.run/@mlc-ai/web-llm').then(({ CreateMLCEngine }) => CreateMLCEngine(MODEL_ID, {
-    initProgressCallback: (progress) => {
-      const percent = Math.round((progress.progress || 0) * 100);
-      setModelStatus(`Preparing local Llama model · ${percent}%`, 'loading');
-    }
-  }));
-  try {
-    engine = await enginePromise;
-    modelButton.textContent = 'MODEL READY';
-    setModelStatus('Local Llama is ready — no server or key required', 'ready');
-    modelLabel.textContent = 'LOCAL · LLAMA 3.2';
-    systemStatus.textContent = 'SYSTEM ONLINE';
-    return engine;
-  } catch (error) {
-    console.warn('WebLLM could not initialize', error);
-    enginePromise = null;
-    modelButton.disabled = false;
-    modelButton.textContent = 'RETRY MODEL';
-    setModelStatus('Model unavailable here — offline companion is still ready', 'fallback');
-    modelLabel.textContent = 'FREE · FALLBACK';
-    systemStatus.textContent = 'SYSTEM ONLINE';
-    return null;
-  }
+  enginePromise = import('https://esm.run/@mlc-ai/web-llm')
+    .then(({ CreateMLCEngine }) => CreateMLCEngine(MODEL_ID, {
+      initProgressCallback: (progress) => {
+        const percent = Math.round((progress.progress || 0) * 100);
+        const instantNote = instantModeActive ? ' · instant replies active' : '';
+        setModelStatus(`Preparing local Llama 3.2 1B · ${percent}%${instantNote}`, instantModeActive ? 'instant' : 'loading');
+      }
+    }))
+    .then((localEngine) => {
+      engine = localEngine;
+      instantModeActive = false;
+      modelButton.textContent = 'MODEL READY';
+      setModelStatus('Local Llama is ready — no server or key required', 'ready');
+      modelLabel.textContent = 'LOCAL · LLAMA 3.2 1B';
+      systemStatus.textContent = 'SYSTEM ONLINE';
+      return engine;
+    })
+    .catch((error) => {
+      console.warn('WebLLM could not initialize', error);
+      enginePromise = null;
+      instantModeActive = true;
+      modelButton.disabled = false;
+      modelButton.textContent = 'RETRY LOCAL AI';
+      setModelStatus('Local model unavailable · instant replies are active', 'instant');
+      modelLabel.textContent = 'INSTANT · LOCAL';
+      systemStatus.textContent = 'SYSTEM ONLINE';
+      return null;
+    });
+  return enginePromise;
+}
+
+function waitForModel(maxWait = MODEL_RESPONSE_WAIT_MS) {
+  if (engine) return Promise.resolve(engine);
+  const loadPromise = startModelLoad();
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      instantModeActive = true;
+      modelButton.textContent = 'AI LOADING · CHAT NOW';
+      setModelStatus('Local model is loading in the background · instant replies active', 'instant');
+      modelLabel.textContent = 'INSTANT · AI WARMING UP';
+      systemStatus.textContent = 'INSTANT MODE ONLINE';
+      resolve(null);
+    }, maxWait);
+    loadPromise.then((localEngine) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(localEngine);
+    });
+  });
 }
 
 function speak(text) {
@@ -239,16 +290,18 @@ function stopListening() {
 }
 
 async function generate(prompt, output) {
-  const localEngine = await loadModel();
+  history.push({ role: 'user', content: prompt });
+  setPresence('thinking', 'FOCUSED / PROCESSING');
+  if (!engine) output.textContent = 'Warming up the local AI… I’ll answer in instant mode if it needs more than a few seconds.';
+  const localEngine = await waitForModel();
   if (!localEngine) {
-    const reply = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+    const reply = createInstantReply(prompt);
     output.textContent = reply;
     history.push({ role: 'assistant', content: reply });
     speak(reply);
     return;
   }
-  history.push({ role: 'user', content: prompt });
-  setPresence('thinking', 'FOCUSED / PROCESSING');
+  output.textContent = '';
   try {
     const stream = await localEngine.chat.completions.create({ messages: history, temperature: 0.72, max_tokens: 180, stream: true });
     let reply = '';
@@ -261,8 +314,9 @@ async function generate(prompt, output) {
     speak(reply);
   } catch (error) {
     console.warn('Local completion failed', error);
-    const reply = 'The local model needs another moment to warm up. I’m still here — try that once more.';
+    const reply = createInstantReply(prompt);
     output.textContent = reply;
+    history.push({ role: 'assistant', content: reply });
     speak(reply);
   }
 }
@@ -294,7 +348,7 @@ document.querySelectorAll('.quick-actions [data-prompt]').forEach((button) => bu
   setMode('chat');
   send(button.dataset.prompt);
 }));
-modelButton.addEventListener('click', () => loadModel());
+modelButton.addEventListener('click', () => startModelLoad());
 chatModeButton.addEventListener('click', () => setMode('chat'));
 talkModeButton.addEventListener('click', () => setMode('talk'));
 micButton.addEventListener('click', () => (isListening ? stopListening() : startListening()));

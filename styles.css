@@ -600,6 +600,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .model-strip.loading .model-dot { animation: blink 0.8s infinite; }
 .model-strip.ready .model-dot { background: var(--mint); }
 .model-strip.fallback .model-dot { background: #ffc86a; box-shadow: 0 0 9px #ffc86a; }
+.model-strip.instant .model-dot { background: #ffc86a; box-shadow: 0 0 9px #ffc86a; animation: blink 1.4s infinite; }
 .chat-scroll { max-height: 400px; min-height: 155px; padding: 22px 6px 17px; overflow: auto; }
 .message { max-width: 850px; display: flex; align-items: flex-start; gap: 12px; animation: appear 0.3s ease; }
 .avatar-mark {
