@@ -4,6 +4,8 @@ const input = document.querySelector('#promptInput');
 const chat = document.querySelector('#chatScroll');
 const suggestions = document.querySelector('#suggestions');
 const clearButton = document.querySelector('#clearButton');
+const voiceToggleButton = document.querySelector('#voiceToggleButton');
+const voiceToggleLabel = document.querySelector('#voiceToggleLabel');
 const avatarStage = document.querySelector('#avatarStage');
 const presenceLabel = document.querySelector('#presenceLabel');
 const expressionLabel = document.querySelector('#expressionLabel');
@@ -28,6 +30,7 @@ let enginePromise = null;
 let speakingTimer = null;
 let recognition = null;
 let isListening = false;
+let voiceEnabled = true;
 let conversationMode = 'chat';
 const history = [{
   role: 'system',
@@ -46,8 +49,8 @@ function setPresence(state, expression = 'CALM / CURIOUS') {
   const label = state === 'speaking' ? 'SPEAKING' : state === 'thinking' ? 'THINKING' : state === 'listening' ? 'LISTENING' : 'IDLE';
   presenceLabel.textContent = label;
   expressionLabel.textContent = expression;
-  voiceLabel.textContent = state === 'speaking' ? 'VOICE ACTIVE' : 'VOICE READY';
-  if (taskStatus) taskStatus.textContent = state === 'listening' ? 'Listening for voice' : state === 'thinking' ? 'Processing request' : state === 'speaking' ? 'Speaking response' : 'Microphone ready';
+  voiceLabel.textContent = !voiceEnabled ? 'VOICE MUTED' : state === 'speaking' ? 'VOICE ACTIVE' : 'VOICE READY';
+  if (taskStatus) taskStatus.textContent = state === 'listening' ? 'Listening for voice' : state === 'thinking' ? 'Processing request' : state === 'speaking' ? 'Speaking response' : conversationMode === 'talk' ? 'Microphone ready' : 'Ready for your message';
   if (expression.includes('BRIGHT')) avatarStage.classList.add('mood-bright');
   if (expression.includes('FOCUSED')) avatarStage.classList.add('mood-focused');
   if (expression.includes('WARM')) avatarStage.classList.add('mood-warm');
@@ -128,6 +131,11 @@ async function loadModel() {
 function speak(text) {
   if (!text) return;
   window.clearTimeout(speakingTimer);
+  if (!voiceEnabled) {
+    window.speechSynthesis?.cancel();
+    setPresence('idle', inferExpression(text));
+    return;
+  }
   if (!('speechSynthesis' in window)) {
     setPresence('speaking', inferExpression(text));
     speakingTimer = window.setTimeout(() => setPresence('idle', inferExpression(text)), Math.min(5200, Math.max(1700, text.length * 35)));
@@ -153,7 +161,8 @@ function setMode(mode) {
   talkControls.hidden = !talk;
   composer.hidden = talk;
   composerFooter.hidden = talk;
-  modeNote.textContent = talk ? 'Press the circle, speak, and NOVA will answer aloud' : 'Type a message or use a suggestion';
+  modeNote.textContent = talk ? 'Press Start Talking and speak naturally' : 'Type a message or choose a quick start';
+  if (taskStatus) taskStatus.textContent = talk ? 'Microphone ready' : 'Ready for your message';
   if (talk) {
     transcriptPreview.textContent = 'Your words will appear here before NOVA answers.';
     talkStatus.textContent = speechRecognitionSupported() ? 'Microphone ready. Press the circle and speak naturally.' : 'Voice input is not supported in this browser. Chat mode is ready.';
@@ -281,14 +290,25 @@ composer.addEventListener('submit', (event) => { event.preventDefault(); send(in
 input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 100)}px`; });
 input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); composer.requestSubmit(); } });
 document.querySelectorAll('.suggestion').forEach((button) => button.addEventListener('click', () => send(button.dataset.prompt)));
+document.querySelectorAll('.quick-actions [data-prompt]').forEach((button) => button.addEventListener('click', () => {
+  setMode('chat');
+  send(button.dataset.prompt);
+}));
 modelButton.addEventListener('click', () => loadModel());
 chatModeButton.addEventListener('click', () => setMode('chat'));
 talkModeButton.addEventListener('click', () => setMode('talk'));
 micButton.addEventListener('click', () => (isListening ? stopListening() : startListening()));
+voiceToggleButton.addEventListener('click', () => {
+  voiceEnabled = !voiceEnabled;
+  voiceToggleButton.setAttribute('aria-pressed', String(voiceEnabled));
+  voiceToggleLabel.textContent = voiceEnabled ? 'VOICE ON' : 'VOICE OFF';
+  if (!voiceEnabled) window.speechSynthesis?.cancel();
+  setPresence('idle', expressionLabel.textContent);
+});
 clearButton.addEventListener('click', () => {
   window.speechSynthesis?.cancel();
   history.splice(1);
-  chat.innerHTML = '<article class="message nova-message"><div class="avatar-mark">N</div><div><p class="message-meta">NOVA <span>JUST NOW</span></p><p class="message-copy">A clean slate. I’m listening. What would you like to explore?</p></div></article>';
+  chat.innerHTML = '<article class="message nova-message"><div class="avatar-mark">N</div><div><p class="message-meta">NOVA <span>READY</span></p><p class="message-copy">New conversation started. What would you like to think through?</p></div></article>';
   setPresence('idle', 'CALM / CURIOUS');
   transcriptPreview.textContent = 'Your words will appear here before NOVA answers.';
   talkStatus.textContent = 'Microphone ready. Press the circle and speak naturally.';
