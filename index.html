@@ -103,49 +103,51 @@
           </div>
         </section>
 
-        <aside class="hud-rail right-rail glass-panel">
-          <div class="rail-heading"><span>03</span> QUICK START</div>
-          <p class="rail-intro">Jump into a useful task.</p>
-          <div class="quick-actions">
-            <button type="button" data-prompt="Turn my rough idea into a clear step-by-step plan."><span class="action-glyph">◇</span><span><strong>MAKE A PLAN</strong><small>Turn an idea into steps</small></span><span>↗</span></button>
-            <button type="button" data-prompt="Explain a difficult topic to me in simple language with one useful example."><span class="action-glyph">◎</span><span><strong>EXPLAIN IT</strong><small>Make a topic clearer</small></span><span>↗</span></button>
-            <button type="button" data-prompt="Brainstorm five original directions for my idea, then recommend the strongest one."><span class="action-glyph">✦</span><span><strong>BRAINSTORM</strong><small>Generate fresh directions</small></span><span>↗</span></button>
-            <button type="button" data-prompt="Help me improve a piece of writing for clarity, tone and impact. Ask me to paste it."><span class="action-glyph">⌁</span><span><strong>IMPROVE WRITING</strong><small>Refine clarity and tone</small></span><span>↗</span></button>
+        <section class="conversation-panel conversation-console glass-panel" aria-label="NOVA conversation">
+          <div class="conversation-header">
+            <div><div class="panel-label"><span>03</span> LIVE CONVERSATION</div><span class="mode-note" id="modeNote">Type a message or choose a quick start</span></div>
+            <span class="chat-model" id="modelLabel">LOCAL · LLAMA 1B</span>
           </div>
-          <div class="privacy-card">
-            <span class="privacy-icon">⌾</span>
-            <div><strong>PRIVATE BY DESIGN</strong><small>No account. No API key. Local inference.</small></div>
+          <div class="model-strip" id="modelStrip">
+            <span class="model-dot"></span>
+            <span id="modelStatus">Instant mode ready</span>
+            <button id="modelButton" type="button" title="Download and prepare the private local AI">PREPARE AI</button>
           </div>
-        </aside>
+          <div class="chat-scroll" id="chatScroll" aria-live="polite">
+            <article class="message nova-message">
+              <div class="avatar-mark">N</div>
+              <div><p class="message-meta">NOVA <span>READY</span></p><p class="message-copy">Hello. I’m NOVA — your private AI companion. Talk to me, type a message, or choose a quick start to begin.</p></div>
+            </article>
+            <div class="suggestions" id="suggestions">
+              <button class="suggestion" data-prompt="Help me decide what to focus on today.">Plan my focus <span>↗</span></button>
+              <button class="suggestion" data-prompt="Help me think through a decision by comparing the tradeoffs.">Think through a decision <span>↗</span></button>
+              <button class="suggestion" data-prompt="Give me a creative challenge I can finish in 20 minutes.">Spark an idea <span>↗</span></button>
+            </div>
+          </div>
+          <form class="composer" id="composer">
+            <label class="sr-only" for="promptInput">Message NOVA</label>
+            <textarea id="promptInput" rows="1" placeholder="Ask NOVA anything..." autocomplete="off"></textarea>
+            <button class="send-button" type="submit" aria-label="Send message"><span>SEND</span><b>↗</b></button>
+          </form>
+          <div class="composer-footer" id="composerFooter"><span><kbd>↵</kbd> send · <kbd>⇧↵</kbd> new line</span><span>Private session <span class="lock">⌾</span></span></div>
+        </section>
       </section>
 
-      <section class="conversation-panel glass-panel" aria-label="NOVA conversation">
-        <div class="conversation-header">
-          <div><div class="panel-label"><span>04</span> CONVERSATION</div><span class="mode-note" id="modeNote">Type a message or choose a quick start</span></div>
-          <span class="chat-model" id="modelLabel">FREE · LOCAL LLAMA 3.2 1B</span>
+      <section class="quick-dock glass-panel" aria-label="Quick starts">
+        <div class="quick-dock-header">
+          <div class="rail-heading"><span>04</span> QUICK START</div>
+          <p class="rail-intro">Choose a direction and start immediately.</p>
         </div>
-        <div class="model-strip" id="modelStrip">
-          <span class="model-dot"></span>
-          <span id="modelStatus">Fast local AI is ready to initialize in this browser</span>
-          <button id="modelButton" type="button" title="Download and prepare the private local AI">PREPARE AI</button>
+        <div class="quick-actions">
+          <button type="button" data-prompt="Turn my rough idea into a clear step-by-step plan."><span class="action-glyph">◇</span><span><strong>MAKE A PLAN</strong><small>Turn an idea into steps</small></span><span>↗</span></button>
+          <button type="button" data-prompt="Explain a difficult topic to me in simple language with one useful example."><span class="action-glyph">◎</span><span><strong>EXPLAIN IT</strong><small>Make a topic clearer</small></span><span>↗</span></button>
+          <button type="button" data-prompt="Brainstorm five original directions for my idea, then recommend the strongest one."><span class="action-glyph">✦</span><span><strong>BRAINSTORM</strong><small>Generate fresh directions</small></span><span>↗</span></button>
+          <button type="button" data-prompt="Help me improve a piece of writing for clarity, tone and impact. Ask me to paste it."><span class="action-glyph">⌁</span><span><strong>IMPROVE WRITING</strong><small>Refine clarity and tone</small></span><span>↗</span></button>
         </div>
-        <div class="chat-scroll" id="chatScroll" aria-live="polite">
-          <article class="message nova-message">
-            <div class="avatar-mark">N</div>
-            <div><p class="message-meta">NOVA <span>READY</span></p><p class="message-copy">Hello. I’m NOVA — your private AI companion. Talk to me, type a message, or choose a quick start to begin.</p></div>
-          </article>
-          <div class="suggestions" id="suggestions">
-            <button class="suggestion" data-prompt="Help me decide what to focus on today.">Plan my focus <span>↗</span></button>
-            <button class="suggestion" data-prompt="Help me think through a decision by comparing the tradeoffs.">Think through a decision <span>↗</span></button>
-            <button class="suggestion" data-prompt="Give me a creative challenge I can finish in 20 minutes.">Spark an idea <span>↗</span></button>
-          </div>
+        <div class="privacy-card">
+          <span class="privacy-icon">⌾</span>
+          <div><strong>PRIVATE BY DESIGN</strong><small>No account. No API key. Local inference.</small></div>
         </div>
-        <form class="composer" id="composer">
-          <label class="sr-only" for="promptInput">Message NOVA</label>
-          <textarea id="promptInput" rows="1" placeholder="Message NOVA..." autocomplete="off"></textarea>
-          <button class="send-button" type="submit" aria-label="Send message"><span>SEND</span><b>↗</b></button>
-        </form>
-        <div class="composer-footer" id="composerFooter"><span><kbd>↵</kbd> send · <kbd>⇧↵</kbd> new line</span><span>Private session <span class="lock">⌾</span></span></div>
       </section>
 
       <section class="trust-strip" aria-label="NOVA capabilities">

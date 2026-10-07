@@ -25,6 +25,8 @@ const micButtonLabel = document.querySelector('#micButtonLabel');
 const talkStatus = document.querySelector('#talkStatus');
 const transcriptPreview = document.querySelector('#transcriptPreview');
 const taskStatus = document.querySelector('#taskStatus');
+const conversationPanel = document.querySelector('.conversation-console');
+const coreVisual = document.querySelector('.core-visual');
 
 let engine = null;
 let enginePromise = null;
@@ -105,6 +107,13 @@ function showThinking() {
   chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
 }
 
+function scrollConversationToEnd(behavior = 'smooth') {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    chat.scrollTo({ top: chat.scrollHeight, behavior });
+  }));
+  window.setTimeout(() => chat.scrollTo({ top: chat.scrollHeight, behavior: 'auto' }), 120);
+}
+
 function setModelStatus(text, state = '') {
   modelStatus.textContent = text;
   document.querySelector('#modelStrip').className = `model-strip ${state}`;
@@ -114,8 +123,8 @@ function startModelLoad() {
   if (engine) return Promise.resolve(engine);
   if (!navigator.gpu) {
     instantModeActive = true;
-    setModelStatus('WebGPU is unavailable · instant replies are active', 'instant');
-    modelLabel.textContent = 'INSTANT · LOCAL';
+    setModelStatus('Instant mode ready · WebGPU unavailable', 'instant');
+    modelLabel.textContent = 'INSTANT MODE';
     systemStatus.textContent = 'SYSTEM ONLINE';
     return Promise.resolve(null);
   }
@@ -137,7 +146,7 @@ function startModelLoad() {
       instantModeActive = false;
       modelButton.textContent = 'MODEL READY';
       setModelStatus('Local Llama is ready — no server or key required', 'ready');
-      modelLabel.textContent = 'LOCAL · LLAMA 3.2 1B';
+      modelLabel.textContent = 'LOCAL · LLAMA 1B';
       systemStatus.textContent = 'SYSTEM ONLINE';
       return engine;
     })
@@ -147,8 +156,8 @@ function startModelLoad() {
       instantModeActive = true;
       modelButton.disabled = false;
       modelButton.textContent = 'RETRY LOCAL AI';
-      setModelStatus('Local model unavailable · instant replies are active', 'instant');
-      modelLabel.textContent = 'INSTANT · LOCAL';
+      setModelStatus('Instant mode ready · local AI optional', 'instant');
+      modelLabel.textContent = 'INSTANT MODE';
       systemStatus.textContent = 'SYSTEM ONLINE';
       return null;
     });
@@ -165,8 +174,8 @@ function waitForModel(maxWait = MODEL_RESPONSE_WAIT_MS) {
       settled = true;
       instantModeActive = true;
       modelButton.textContent = 'AI LOADING · CHAT NOW';
-      setModelStatus('Local model is loading in the background · instant replies active', 'instant');
-      modelLabel.textContent = 'INSTANT · AI WARMING UP';
+      setModelStatus('Instant mode ready · AI loading in background', 'instant');
+      modelLabel.textContent = 'INSTANT · LOADING';
       systemStatus.textContent = 'INSTANT MODE ONLINE';
       resolve(null);
     }, maxWait);
@@ -298,6 +307,7 @@ async function generate(prompt, output) {
     const reply = createInstantReply(prompt);
     output.textContent = reply;
     history.push({ role: 'assistant', content: reply });
+    scrollConversationToEnd();
     speak(reply);
     return;
   }
@@ -317,6 +327,7 @@ async function generate(prompt, output) {
     const reply = createInstantReply(prompt);
     output.textContent = reply;
     history.push({ role: 'assistant', content: reply });
+    scrollConversationToEnd();
     speak(reply);
   }
 }
@@ -346,11 +357,18 @@ input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !eve
 document.querySelectorAll('.suggestion').forEach((button) => button.addEventListener('click', () => send(button.dataset.prompt)));
 document.querySelectorAll('.quick-actions [data-prompt]').forEach((button) => button.addEventListener('click', () => {
   setMode('chat');
+  conversationPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   send(button.dataset.prompt);
 }));
 modelButton.addEventListener('click', () => startModelLoad());
-chatModeButton.addEventListener('click', () => setMode('chat'));
-talkModeButton.addEventListener('click', () => setMode('talk'));
+chatModeButton.addEventListener('click', () => {
+  setMode('chat');
+  if (window.innerWidth <= 960) conversationPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+talkModeButton.addEventListener('click', () => {
+  setMode('talk');
+  if (window.innerWidth <= 960) avatarStage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 micButton.addEventListener('click', () => (isListening ? stopListening() : startListening()));
 voiceToggleButton.addEventListener('click', () => {
   voiceEnabled = !voiceEnabled;
@@ -367,6 +385,20 @@ clearButton.addEventListener('click', () => {
   transcriptPreview.textContent = 'Your words will appear here before NOVA answers.';
   talkStatus.textContent = 'Microphone ready. Press the circle and speak naturally.';
 });
+
+if (coreVisual && window.matchMedia('(pointer: fine)').matches) {
+  coreVisual.addEventListener('pointermove', (event) => {
+    const bounds = coreVisual.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    coreVisual.style.setProperty('--tilt-x', `${(-y * 3.2).toFixed(2)}deg`);
+    coreVisual.style.setProperty('--tilt-y', `${(x * 3.8).toFixed(2)}deg`);
+  });
+  coreVisual.addEventListener('pointerleave', () => {
+    coreVisual.style.setProperty('--tilt-x', '0deg');
+    coreVisual.style.setProperty('--tilt-y', '0deg');
+  });
+}
 
 setupRecognition();
 setPresence('idle');
